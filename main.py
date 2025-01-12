@@ -4,11 +4,22 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, JobQueue
 import datetime
+from flask import Flask
+from threading import Thread
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 admins = [int(os.getenv("ADMIN_ID"))]
 print("Список администраторов:", admins)
 db_file = 'appointments.db'  
+# Flask приложение
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+def run_flask():
+    port = int(os.getenv('PORT', '8080'))  # Используем порт 8080 по умолчанию
+    app.run(host='0.0.0.0', port=port)
 
 
 def get_db_connection():
@@ -318,12 +329,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     job_queue = app.job_queue  
 
-
-    port = 8000
     job_queue.run_repeating(keep_alive, interval=60) 
-    app.listen(port, () => {
-	console.log(`Example app listening on port ${port}`)
-    })
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('book', book))
     app.add_handler(CommandHandler('view_requests', view_requests))
@@ -335,6 +341,8 @@ def main():
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
-    
+    # Запускаем сервер Flask в отдельном потоке
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
 if __name__ == '__main__':
     main()

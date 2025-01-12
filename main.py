@@ -3,12 +3,18 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 import datetime
+import asyncio
 
 admins = [int(os.getenv("ADMIN_ID"))]
 print("Список администраторов:", admins)
 db_file = 'appointments.db'  
 
-
+async def log_task():
+    """Функция логирования для предотвращения простоя."""
+    while True:
+        print(f"[{datetime.datetime.now()}] Бот работает и ждет событий...")
+        await asyncio.sleep(120)  # Ожидание 2 минуты
+	    
 def get_db_connection():
     conn = sqlite3.connect(db_file)
     conn.row_factory = sqlite3.Row

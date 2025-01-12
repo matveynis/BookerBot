@@ -305,7 +305,19 @@ async def appointment_action(update: Update, context):
                 print(f"Ошибка отправки уведомления пользователю: {e}")
         else:
             await query.answer("Заявка не найдена.")
+async def keep_alive(context):
+    print("Выполняется задача поддержания активности")
+    const express = require('express')
+    const app = express()
+    const port = process.env.PORT || 4000;
 
+    app.get('/', (req, res) => {
+      res.send('Hello World!')
+    })
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
 
 def main():
     create_table()
@@ -316,8 +328,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     job_queue = app.job_queue  
 
-    async def keep_alive(context):
-        print("Выполняется задача поддержания активности")
+
 
     job_queue.run_repeating(keep_alive, interval=60) 
 

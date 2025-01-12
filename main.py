@@ -310,18 +310,16 @@ async def appointment_action(update: Update, context):
             await query.answer("Заявка не найдена.")
 
 
-def main():
-    create_table() 
-    asyncio.run(run_bot())  
+async def main():
+    create_table()
 
-
-async def run_bot():
-    asyncio.create_task(log_task())  
+    # Асинхронная задача для логгера
+    asyncio.create_task(log_task())
 
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Регистрация обработчиков команд и сообщений
+    # Регистрация обработчиков
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('book', book))
     app.add_handler(CommandHandler('view_requests', view_requests))
@@ -332,8 +330,13 @@ async def run_bot():
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
 
-    
+    # Запуск бота
+    print("Бот запущен!")
     await app.run_polling()
+
+if __name__ == '__main__':
+    # Запуск основного события без `asyncio.run` (если цикл уже запущен)
+    asyncio.run(main())
 
 
 if __name__ == '__main__':

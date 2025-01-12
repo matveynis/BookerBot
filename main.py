@@ -3,6 +3,7 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, JobQueue
 import datetime
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 admins = [int(os.getenv("ADMIN_ID"))]
 print("Список администраторов:", admins)
@@ -329,7 +330,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
 
-    app.run_polling(allowed_updates=Update.ALL_TYPES, port=port)
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
     
 if __name__ == '__main__':
     main()

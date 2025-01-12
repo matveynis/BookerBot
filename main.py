@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 import datetime
 
-admins = [os.getenv("ADMIN_ID")]
+admins = [int(os.getenv("ADMIN_ID"))]
 db_file = 'appointments.db'  
 
 

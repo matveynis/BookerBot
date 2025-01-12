@@ -5,6 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 import datetime
 
 admins = [int(os.getenv("ADMIN_ID"))]
+print("Список администраторов:", admins)
 db_file = 'appointments.db'  
 
 

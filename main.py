@@ -308,11 +308,12 @@ async def appointment_action(update: Update, context):
 def main():
     create_table()
     TOKEN = os.getenv("BOT_TOKEN")
-    app = ApplicationBuilder().token(TOKEN).build()
-        # Создаем очередь задач
-    job_queue = app.job_queue  # Получаем очередь задач из приложения
+    port = int(os.getenv('PORT', '8080'))  # Используем порт 8080 по умолчанию, если переменная окружения PORT не задана
 
-    # Добавляем задачу для поддержания активности каждые 10 минут
+    
+    app = ApplicationBuilder().token(TOKEN).build()
+    job_queue = app.job_queue  
+т
     async def keep_alive(context):
         print("Выполняется задача поддержания активности")
 
@@ -328,7 +329,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
 
-    app.run_polling()
-
+    app.run_polling(allowed_updates=Update.ALL_TYPES, port=port)
+    
 if __name__ == '__main__':
     main()

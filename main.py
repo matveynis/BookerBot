@@ -10,10 +10,9 @@ print("Список администраторов:", admins)
 db_file = 'appointments.db'  
 
 async def log_task():
-    """Функция логирования для предотвращения простоя."""
     while True:
         print(f"[{datetime.datetime.now()}] Бот работает и ждет событий...")
-        await asyncio.sleep(120)  # Ожидание 2 минуты
+        await asyncio.sleep(60)  
 	    
 def get_db_connection():
     conn = sqlite3.connect(db_file)
@@ -313,7 +312,7 @@ async def appointment_action(update: Update, context):
 
 def main():
     create_table()
-
+    asyncio.create_task(log_task())  
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler('start', start))
@@ -325,9 +324,9 @@ def main():
     app.add_handler(CallbackQueryHandler(reason_handler, pattern="^reason_"))
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
-    asyncio.create_task(log_task())
+    
 
-    app.run_polling()
+    await app.run_polling()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

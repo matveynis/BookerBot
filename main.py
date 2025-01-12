@@ -74,7 +74,7 @@ async def start(update: Update, context):
         await update.message.reply_text(
             "Привет, администратор! Вот доступные команды:\n"
             "/book - Записаться на встречу.\n"
-	    "/upcoming_requests - Ближайшие мероприятия.\"
+	    "/upcoming_requests - Ближайшие мероприятия.\n"
             "/view_requests - Просмотр всех заявок.\n"
         )
 

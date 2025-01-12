@@ -1,19 +1,14 @@
 import sqlite3
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, JobQueue
 import datetime
-import asyncio
 
 admins = [int(os.getenv("ADMIN_ID"))]
 print("Список администраторов:", admins)
 db_file = 'appointments.db'  
 
-async def log_task():
-    while True:
-        print(f"[{datetime.datetime.now()}] Бот работает и ждет событий...")
-        await asyncio.sleep(60)  
-	    
+
 def get_db_connection():
     conn = sqlite3.connect(db_file)
     conn.row_factory = sqlite3.Row
@@ -308,18 +303,18 @@ async def appointment_action(update: Update, context):
                 print(f"Ошибка отправки уведомления пользователю: {e}")
         else:
             await query.answer("Заявка не найдена.")
+async def keep_alive(context):
+    print("Выполняется задача поддержания активности")
 
-
-async def main():
+def main():
     create_table()
+    job_queue = JobQueue()
+    job_queue.set_application(app)
 
-    # Асинхронная задача для логгера
-    asyncio.create_task(log_task())
-
+    # Добавляем задачу для поддержания активности каждые 10 минут
+    job_queue.run_repeating(keep_alive, interval=600)
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
-
-    # Регистрация обработчиков
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('book', book))
     app.add_handler(CommandHandler('view_requests', view_requests))
@@ -330,14 +325,7 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
 
-    # Запуск бота
-    print("Бот запущен!")
-    await app.run_polling()
+    app.run_polling()
 
 if __name__ == '__main__':
-    # Запуск основного события без `asyncio.run` (если цикл уже запущен)
-    asyncio.run(main())
-
-
-if __name__ == '__main__':
-    asyncio.run(main())
+    main()

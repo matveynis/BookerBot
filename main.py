@@ -303,16 +303,18 @@ async def appointment_action(update: Update, context):
                 print(f"Ошибка отправки уведомления пользователю: {e}")
         else:
             await query.answer("Заявка не найдена.")
-async def keep_alive(context):
-    print("Выполняется задача поддержания активности")
+
 
 def main():
     create_table()
-    job_queue = JobQueue()
-    job_queue.set_application(app)
+    # Создаем очередь задач
+    job_queue = app.job_queue  # Получаем очередь задач из приложения
 
     # Добавляем задачу для поддержания активности каждые 10 минут
-    job_queue.run_repeating(keep_alive, interval=600)
+    async def keep_alive(context):
+        print("Выполняется задача поддержания активности")
+
+    job_queue.run_repeating(keep_alive, interval=60) 
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler('start', start))

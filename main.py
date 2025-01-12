@@ -325,6 +325,7 @@ def main():
     app.add_handler(CallbackQueryHandler(reason_handler, pattern="^reason_"))
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
+    asyncio.create_task(log_task())
 
     app.run_polling()
 

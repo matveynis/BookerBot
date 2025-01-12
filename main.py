@@ -311,10 +311,17 @@ async def appointment_action(update: Update, context):
 
 
 def main():
-    create_table()
+    create_table() 
+    asyncio.run(run_bot())  
+
+
+async def run_bot():
     asyncio.create_task(log_task())  
+
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
+
+    # Регистрация обработчиков команд и сообщений
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('book', book))
     app.add_handler(CommandHandler('view_requests', view_requests))
@@ -324,9 +331,10 @@ def main():
     app.add_handler(CallbackQueryHandler(reason_handler, pattern="^reason_"))
     app.add_handler(MessageHandler(filters.TEXT, message_handler))
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
-    
 
+    
     await app.run_polling()
+
 
 if __name__ == '__main__':
     asyncio.run(main())

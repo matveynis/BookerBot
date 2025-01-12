@@ -313,7 +313,7 @@ def main():
     
     app = ApplicationBuilder().token(TOKEN).build()
     job_queue = app.job_queue  
-т
+
     async def keep_alive(context):
         print("Выполняется задача поддержания активности")
 

@@ -307,6 +307,7 @@ async def appointment_action(update: Update, context):
 
 def main():
     create_table()
+    TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
         # Создаем очередь задач
     job_queue = app.job_queue  # Получаем очередь задач из приложения
@@ -316,7 +317,7 @@ def main():
         print("Выполняется задача поддержания активности")
 
     job_queue.run_repeating(keep_alive, interval=60) 
-    TOKEN = os.getenv("BOT_TOKEN")
+
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('book', book))
     app.add_handler(CommandHandler('view_requests', view_requests))

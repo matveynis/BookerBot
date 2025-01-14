@@ -4,28 +4,33 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, JobQueue
 import datetime
-from flask import Flask
-from threading import Thread
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+user_logger = logging.getLogger("user_actions")
+user_logger.setLevel(logging.INFO)
+user_logger.propagate = False  
+
+file_handler = logging.FileHandler("user_actions.log")
+file_formatter = logging.Formatter('%(asctime)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+user_logger.addHandler(file_handler)
+
+console_handler = logging.StreamHandler()
+console_formatter = logging.Formatter('%(asctime)s - [USER ACTION] - %(message)s')
+console_handler.setFormatter(console_formatter)
+user_logger.addHandler(console_handler)
 
 admins = [int(os.getenv("ADMIN_ID"))]
-print("Список администраторов:", admins)
-db_file = 'appointments.db'  
-# Flask приложение
-app = Flask(__name__)
+db_file = 'appointments.db'
 
-@app.route('/')
-def hello_world():
-    return 'Hello, World!'
-def run_flask():
-    port = int(os.getenv('PORT', '8080'))  # Используем порт 8080 по умолчанию
-    app.run(host='0.0.0.0', port=port)
-
-
+def log_user_action(user_id, username, action, details=""):
+    """Логирует действия пользователя."""
+    user_logger.info(f"UserID: {user_id}, Username: {username}, Action: {action}, Details: {details}")
 def get_db_connection():
     conn = sqlite3.connect(db_file)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def create_table():
     conn = get_db_connection()
@@ -53,6 +58,7 @@ def add_appointment(user, chat_id, time, duration, message, status='pending'):
     conn.commit()
     conn.close()
 
+
 def get_all_appointments():
     conn = get_db_connection()
     appointments = conn.execute('SELECT * FROM appointments').fetchall()
@@ -77,8 +83,9 @@ def update_appointment_status(appointment_id, status):
 
 
 async def start(update: Update, context):
-    user_id = update.message.from_user.id
-    if user_id not in admins:
+    user = update.message.from_user
+    log_user_action(user.id, user.username, "start")
+    if user.id not in admins:
         await update.message.reply_text(
             "Привет! Я бот для записи на встречи.\n"
             "Вот доступные команды:\n"
@@ -88,7 +95,7 @@ async def start(update: Update, context):
         await update.message.reply_text(
             "Привет, администратор! Вот доступные команды:\n"
             "/book - Записаться на встречу.\n"
-	    "/upcoming_requests - Ближайшие мероприятия.\n"
+            "/upcoming_requests - Ближайшие мероприятия.\n"
             "/view_requests - Просмотр всех заявок.\n"
         )
 
@@ -96,18 +103,18 @@ async def start(update: Update, context):
 def create_calendar_markup(year, month, occupied_dates):
     first_day_of_month = datetime.date(year, month, 1)
     start_day = first_day_of_month.weekday()
-    days_in_month = (datetime.date(year, month + 1, 1) - first_day_of_month).days if month < 12 else (datetime.date(year + 1, 1, 1) - first_day_of_month).days
-
+    days_in_month = (datetime.date(year, month + 1, 1) - first_day_of_month).days if month < 12 else (
+                datetime.date(year + 1, 1, 1) - first_day_of_month).days
 
     keyboard = []
     day = 1
 
-    for row in range(6):  
+    for row in range(6):
         keyboard_row = []
-        for col in range(7): 
-            if row == 0 and col < start_day:  
+        for col in range(7):
+            if row == 0 and col < start_day:
                 keyboard_row.append(InlineKeyboardButton(" ", callback_data="empty"))
-            elif day <= days_in_month:  
+            elif day <= days_in_month:
                 date_str = f'{year}-{month:02d}-{day:02d}'
                 if date_str in occupied_dates:
                     keyboard_row.append(
@@ -118,7 +125,7 @@ def create_calendar_markup(year, month, occupied_dates):
                         InlineKeyboardButton(f'{day}', callback_data=f'date_{date_str}')
                     )
                 day += 1
-            else:  
+            else:
                 keyboard_row.append(InlineKeyboardButton(" ", callback_data="empty"))
         keyboard.append(keyboard_row)
 
@@ -126,6 +133,8 @@ def create_calendar_markup(year, month, occupied_dates):
 
 
 async def book(update: Update, context):
+    user = update.message.from_user
+    log_user_action(user.id, user.username, "book", "Started booking process")
     occupied_dates = get_occupied_dates()
 
     today = datetime.date.today()
@@ -133,8 +142,12 @@ async def book(update: Update, context):
 
     await update.message.reply_text("Выберите дату для записи:", reply_markup=calendar_markup)
 
+
 async def date_handler(update: Update, context):
     query = update.callback_query
+    user = query.from_user
+    date_str = query.data.split('_')[1]
+    log_user_action(user.id, user.username, "date_handler", f"Selected date: {date_str}")
 
     if query.data.startswith('occupied_'):
         await query.answer("Эта дата уже занята. Выберите другую.", show_alert=True)
@@ -169,11 +182,15 @@ async def date_handler(update: Update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.answer()
-    await query.edit_message_text(f"Вы выбрали дату: {selected_date}. Теперь выберите время для встречи:", reply_markup=reply_markup)
+    await query.edit_message_text(f"Вы выбрали дату: {selected_date}. Теперь выберите время для встречи:",
+                                  reply_markup=reply_markup)
+
 
 async def time_handler(update: Update, context):
     query = update.callback_query
-
+    user = query.from_user
+    time_chosen, date_chosen = query.data.split('_')[1], query.data.split('_')[2]
+    log_user_action(user.id, user.username, "time_handler", f"Selected time: {time_chosen} on {date_chosen}")
     if query.data == "occupied":
         await query.answer("Это время уже занято. Выберите другое.", show_alert=True)
         return
@@ -191,12 +208,15 @@ async def time_handler(update: Update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.answer()
-    await query.edit_message_text(f"Вы выбрали время: {time_chosen}. Теперь выберите причину встречи:", reply_markup=reply_markup)
+    await query.edit_message_text(f"Вы выбрали время: {time_chosen}. Теперь выберите причину встречи:",
+                                  reply_markup=reply_markup)
+
 
 async def message_handler(update: Update, context):
-    user_id = update.message.from_user.id
+    user = update.message.from_user
     chat_id = update.message.chat_id
     message = update.message.text
+    log_user_action(user.id, user.username, "message_handler", f"Message: {message}")
     time = context.user_data.get('time', 'не выбрано')
     date = context.user_data.get('date', 'не выбрано')
     reason = context.user_data.get('reason', 'не выбрано')
@@ -212,7 +232,9 @@ async def message_handler(update: Update, context):
         except Exception as e:
             print(f"Ошибка отправки сообщения администратору {admin_id}: {e}")
 
-    await update.message.reply_text(f"Заявка отправлена. Дата: {date}, время: {time}, причина: {reason}. Сообщение: {message}.")
+    await update.message.reply_text(
+        f"Заявка отправлена. Дата: {date}, время: {time}, причина: {reason}. Сообщение: {message}.")
+
 
 async def view_requests(update: Update, context):
     user_id = update.message.from_user.id
@@ -226,7 +248,7 @@ async def view_requests(update: Update, context):
 
         if pending_appointments:
             for appointment in pending_appointments:
-                status = "Ожидает" 
+                status = "Ожидает"
                 keyboard = [
                     [InlineKeyboardButton("Принять", callback_data=f"accept_{appointment['id']}"),
                      InlineKeyboardButton("Отклонить", callback_data=f"reject_{appointment['id']}")]
@@ -235,7 +257,7 @@ async def view_requests(update: Update, context):
 
                 await update.message.reply_text(
                     f"Заявка от @{appointment['user']} на {appointment['time']}.\n"
-                    f"Причина: {appointment['duration']}\n" 
+                    f"Причина: {appointment['duration']}\n"
                     f"Сообщение: {appointment['message']}\n"
                     f"Статус: {status}",
                     reply_markup=reply_markup
@@ -244,6 +266,7 @@ async def view_requests(update: Update, context):
             await update.message.reply_text("Нет ожидающих заявок.")
     else:
         await update.message.reply_text("Вы не администратор!")
+
 
 async def upcoming_requests(update: Update, context):
     user_id = update.message.from_user.id
@@ -261,7 +284,7 @@ async def upcoming_requests(update: Update, context):
                     f"Ближайшая встреча:\n"
                     f"Дата и время: {appointment['time']}\n"
                     f"Пользователь: @{appointment['user']}\n"
-                    f"Причина: {appointment['duration']}\n"  
+                    f"Причина: {appointment['duration']}\n"
                     f"Сообщение: {appointment['message']}\n"
                 )
         else:
@@ -269,10 +292,12 @@ async def upcoming_requests(update: Update, context):
     else:
         await update.message.reply_text("Вы не администратор!")
 
+
 async def reason_handler(update: Update, context):
     query = update.callback_query
+    user = query.from_user
     reason = query.data.split('_')[1]
-
+    log_user_action(user.id, user.username, "reason_handler", f"Selected reason: {reason}")
     reason_dict = {
         'work': "По работе",
         'study': "По учебе",
@@ -287,13 +312,14 @@ async def reason_handler(update: Update, context):
     await query.edit_message_text(f"Вы выбрали причину: {selected_reason}. Оставьте сообщение для администратора:")
     await query.message.reply_text("Напишите сообщение для администратора.")
 
+
 async def appointment_action(update: Update, context):
     query = update.callback_query
     action, appointment_id = query.data.split('_')
 
     if action == "accept" or action == "reject":
         status = 'accepted' if action == 'accept' else 'rejected'
-        status_ru = 'принята' if status == 'accepted' else 'отклонена' 
+        status_ru = 'принята' if status == 'accepted' else 'отклонена'
 
         update_appointment_status(appointment_id, status)
 
@@ -310,26 +336,20 @@ async def appointment_action(update: Update, context):
             try:
                 await context.bot.send_message(
                     chat_id,
-                    f"Ваша заявка на встречу на {time} была {status_ru}."  
+                    f"Ваша заявка на встречу на {time} была {status_ru}."
                 )
             except Exception as e:
                 print(f"Ошибка отправки уведомления пользователю: {e}")
         else:
             await query.answer("Заявка не найдена.")
-def keep_alive(context):
-    print("Выполняется задача поддержания активности")
+
+
 
 
 def main():
     create_table()
     TOKEN = os.getenv("BOT_TOKEN")
-    port = int(os.getenv('PORT', '8080'))  # Используем порт 8080 по умолчанию, если переменная окружения PORT не задана
-
-    
     app = ApplicationBuilder().token(TOKEN).build()
-    job_queue = app.job_queue  
-
-    job_queue.run_repeating(keep_alive, interval=60) 
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('book', book))
     app.add_handler(CommandHandler('view_requests', view_requests))
@@ -341,8 +361,8 @@ def main():
     app.add_handler(CallbackQueryHandler(appointment_action, pattern="^(accept|reject)_"))
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
-    # Запускаем сервер Flask в отдельном потоке
-    flask_thread = Thread(target=run_flask)
-    flask_thread.start()
+
+
+
 if __name__ == '__main__':
     main()
